@@ -2,6 +2,7 @@ from panda3d.core import TextNode
 
 from direct.gui.DirectGui import DirectLabel
 from direct.gui.DirectGui import DirectFrame
+from direct.gui.DirectGui import DirectScrolledFrame
 
 
 class SizeSpec:
@@ -25,8 +26,11 @@ class BaseFrame:
     def destroy(self):
         self.np.destroy()
 
+    def get_size(self):
+        return self.size_spec
 
-class WholeScreen:
+
+class WholeScreen(BaseFrame):
     def __init__(self, child, name="whole screen", auto_resize=True):
         self.child = child
         self.np = base.a2dTopLeft.attach_new_node(name)
@@ -144,7 +148,7 @@ class VerticalFrame(MultiFrame):
             top -= c_height
 
 
-class Empty:
+class Empty(BaseFrame):
     def __init__(self, size_spec=None):
         if size_spec is None:
             size_spec = SizeSpec()
@@ -153,17 +157,8 @@ class Empty:
     def create(self, parent):
         pass
 
-    def destroy(self):
-        pass
 
-    def resize(self, width, height):
-        pass
-
-    def get_size(self):
-        return self.size_spec
-
-
-class Element:
+class Element(BaseFrame):
     def __init__(self, element_cls, kwargs=None, size_spec=None):
         self.element_cls = element_cls
         self.kwargs = kwargs
@@ -194,8 +189,49 @@ class Element:
             else:
                 self.np['text_pos'] = (0, self.np['text_pos'][1])
 
-    def get_size(self):
-        return self.size_spec
+
+class ScrollableFrame(BaseFrame):
+    def __init__(self, child, size_spec=None):
+        self.child = child
+        if size_spec is None:
+            size_spec = SizeSpec()
+        self.size_spec = size_spec
+
+    def create(self, parent):
+        self.np = DirectScrolledFrame(
+            parent=parent,
+            frameColor=(1,0,0,1),
+        )
+        self.child.create(self.np.getCanvas())
+
+    def destroy(self):
+        self.np.destroy()
+
+    def resize(self, width, height):
+        self.np['frameSize'] = (0, width, -height, 0)
+
+        min_size = self.child.get_size()
+        actual_width = max(width, min_size.w_min)
+        actual_height = max(height, min_size.h_min)
+        # Is the up-and-down scrollbar active?
+        if actual_height > height:
+            # Can we trim its width from the canvas' width?
+            left, right, _, _ = self.np['verticalScroll_frameSize']
+            bar_width = right - left
+            actual_width = max(width - bar_width, min_size.w_min)
+        # Is the left-and-right scrollbar active?
+        if actual_width > width:
+            # Can we trim its height from the canvas' height?
+            _, _, bottom, top = self.np['horizontalScroll_frameSize']
+            bar_height = top - bottom
+            actual_height = max(height - bar_height, min_size.h_min)
+        self.np['canvasSize'] = (
+            0,
+            actual_width,
+            -actual_height,
+            0,
+        )
+        self.child.resize(actual_width, actual_height)
 
 
 def spacer(spacer_spec, style=None):

@@ -1,3 +1,9 @@
+from panda3d.core import TextNode
+
+from direct.gui.DirectGui import DirectLabel
+from direct.gui.DirectGui import DirectFrame
+
+
 class SizeSpec:
     def __init__(self,
                  w_min=0.0, h_min=0.0,
@@ -71,7 +77,7 @@ class MultiFrame:
     def destroy(self):
         for child in self.children:
             child.destroy()
-        childen = []
+        self.children = []
 
         for np in self.nps:
             np.destroy()
@@ -79,12 +85,6 @@ class MultiFrame:
             
 
 class HorizontalFrame(MultiFrame):
-    def resize(self, width, height):
-        slot_width = width / float(len(self.children))
-        for idx, (c, np) in enumerate(zip(self.children, self.nps)):
-            np.set_pos(slot_width * idx, 0, 0)
-            c.resize(slot_width, height)
-
     def get_size(self):
         child_sizes = [c.get_size() for c in self.children]
         w_min = sum(c.w_min for c in child_sizes)
@@ -115,12 +115,6 @@ class HorizontalFrame(MultiFrame):
             
 
 class VerticalFrame(MultiFrame):
-    def resize(self, width, height):
-        slot_height = height / float(len(self.children))
-        for idx, (c, np) in enumerate(zip(self.children, self.nps)):
-            np.set_pos(0, 0, -slot_height * idx)
-            c.resize(width, slot_height)
-
     def get_size(self):
         child_sizes = [c.get_size() for c in self.children]
         w_min = max(c.w_min for c in child_sizes)
@@ -155,6 +149,9 @@ class Element:
         self.element_cls = element_cls
         self.kwargs = kwargs
         self.size_spec = size_spec
+        # FIXME: The text_pos has to be set to align the text with the label's boundaries. This solution is brittle AF.
+        if 'text_align' not in self.kwargs:
+            self.kwargs['text_align'] = TextNode.ALeft
 
     def create(self, parent):
         self.np = self.element_cls(
@@ -166,7 +163,46 @@ class Element:
         self.np.destroy()
 
     def resize(self, width, height):
-        self.np['frameSize'] = (0, width, -height, 0)
+        self.np.set_pos(width / 2.0, 0, -height / 2.0)
+        self.np['frameSize'] = (-width / 2.0, width / 2.0, -height / 2.0, height / 2.0)
+        if self.np['text'] is not None:
+            if self.kwargs['text_align'] == TextNode.ALeft:
+                self.np['text_pos'] = (-width / 2.0 + self.kwargs['text_pos'][0], self.kwargs['text_pos'][1])
+            elif self.kwargs['text_align'] == TextNode.ARight:
+                self.np['text_pos'] = (width / 2.0 - self.kwargs['text_pos'][0], self.kwargs['text_pos'][1])
+            else:
+                self.np['text_pos'] = (0, self.np['text_pos'][1])
 
     def get_size(self):
         return self.size_spec
+
+
+def spacer(spacer_spec, style=None):
+    if style is None:
+        style = dict()
+    return Element(
+        DirectFrame,
+        kwargs=style,
+        size_spec=SizeSpec(**spacer_spec),
+    )
+
+
+def spacer_factory(spacer_spec, style=None):
+    def inner():
+        return spacer(spacer_spec, style=style)
+    return inner
+
+
+def filler(style=None):
+    if style is None:
+        style = dict()
+    return Element(
+        DirectLabel,
+        kwargs=style,
+        size_spec=SizeSpec(
+            w_min=0.0,
+            w_weight=1.0,
+            h_min=0.0,
+            h_weight=1.0,
+        ),
+    )

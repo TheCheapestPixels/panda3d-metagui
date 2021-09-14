@@ -1,5 +1,6 @@
 import sys
 
+from panda3d.core import TextNode
 from direct.showbase.ShowBase import ShowBase
 from direct.gui.DirectGui import DirectLabel
 
@@ -42,7 +43,10 @@ if __name__ == '__main__':
                 DirectLabel,
                 kwargs=dict(
                     text="Foo",
-                    text_pos=(0.07, -0.07),
+                    text_pos=(0, -0.02),
+                    #text_align=TextNode.ALeft,
+                    #text_align=TextNode.ARight,
+                    text_align=TextNode.ACenter,
                     text_scale=0.07,
                     frameColor=(1,0,0,1),
                 ),
@@ -53,7 +57,8 @@ if __name__ == '__main__':
                     DirectLabel,
                     kwargs=dict(
                         text="Bar",
-                        text_pos=(0.07, -0.07),
+                        text_pos=(0, -0.02),
+                        text_align=TextNode.ALeft,
                         text_scale=0.07,
                         frameColor=(0,1,0,1),
                     ),
@@ -63,7 +68,8 @@ if __name__ == '__main__':
                     DirectLabel,
                     kwargs=dict(
                         text="Baz",
-                        text_pos=(0.07, -0.07),
+                        text_pos=(0, -0.02),
+                        text_align=TextNode.ARight,
                         text_scale=0.07,
                         frameColor=(0,0,1,1),
                     ),

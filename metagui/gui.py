@@ -144,10 +144,31 @@ class VerticalFrame(MultiFrame):
             top -= c_height
 
 
+class Empty:
+    def __init__(self, size_spec=None):
+        if size_spec is None:
+            size_spec = SizeSpec()
+        self.size_spec = size_spec
+
+    def create(self, parent):
+        pass
+
+    def destroy(self):
+        pass
+
+    def resize(self, width, height):
+        pass
+
+    def get_size(self):
+        return self.size_spec
+
+
 class Element:
     def __init__(self, element_cls, kwargs=None, size_spec=None):
         self.element_cls = element_cls
         self.kwargs = kwargs
+        if size_spec is None:
+            size_spec = SizeSpec()
         self.size_spec = size_spec
         # FIXME: The text_pos has to be set to align the text with the label's boundaries. This solution is brittle AF.
         if 'text_align' not in self.kwargs:

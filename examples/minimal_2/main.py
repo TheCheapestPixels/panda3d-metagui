@@ -8,6 +8,7 @@ from metagui.gui import SizeSpec
 from metagui.gui import WholeScreen
 from metagui.gui import HorizontalFrame
 from metagui.gui import VerticalFrame
+from metagui.gui import Empty
 from metagui.gui import Element
 from metagui.gui import spacer
 from metagui.gui import filler
@@ -64,7 +65,7 @@ if __name__ == '__main__':
                 filler(filler_style),
                 weight=0.0,
             ),
-            filler(filler_style),
+            Empty(),
             VerticalFrame(
                 Element(
                     DirectLabel,

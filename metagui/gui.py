@@ -67,10 +67,11 @@ class WholeScreen(BaseFrame):
 
 class MultiFrame:
     def __init__(self, *children, weight=1.0):
-        self.children = children
+        self.children = list(children)
         self.weight = weight
 
     def create(self, parent):
+        self.parent = parent
         self.nps = [
             parent.attach_new_node(repr(self))
             for c in self.children
@@ -84,9 +85,23 @@ class MultiFrame:
         self.children = []
 
         for np in self.nps:
-            np.destroy()
+            np.remove_node()
         self.nps = []
-            
+
+    def add(self, idx, child):
+        assert 0 <= idx <= len(self.children)
+        self.children.insert(idx, child)
+        np = self.parent.attach_new_node(repr(self))
+        self.nps.insert(idx, np)
+        child.create(np)
+
+    def remove(self, idx):
+        assert 0 <= idx <= len(self.children) - 1
+        child = self.children.pop(idx)
+        child.destroy()
+        np = self.nps.pop(idx)
+        np.remove_node()
+
 
 class HorizontalFrame(MultiFrame):
     def get_size(self):

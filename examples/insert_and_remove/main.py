@@ -63,7 +63,6 @@ if __name__ == '__main__':
         ),
     )
     gui = WholeScreen(container)
-    gui.create()
 
     def add_element(idx):
         element = Element(

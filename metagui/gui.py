@@ -16,37 +16,129 @@ class SizeSpec:
         self.h_weight = h_weight
 
 
+"""
+123456789012345678901234567890123456789012345678901234567890123456789012
+"""
 class BaseFrame:
-    def create(self, parent):
-        raise NotImplemented
+    def __init__(self, child):
+        """
+        """
+        self.child = child
 
-    def resize(self, size_x, size_y):
-        pass
+    def create(self, parent, parent_np):
+        """
+        Create the widet, attach it to the scene graph, and trigger the
+        child(ren) to do the same. In this phase a `self.np` has to be
+        assigned.
+        """
+        self.parent = parent
+        self.np = parent_np
+        self.child.create(self, self.parent_np)
 
     def destroy(self):
-        self.np.destroy()
+        """
+        Undo `create()`.
+        """
+        self.child.destroy()
+        self.np = None
 
     def get_size(self):
-        return self.size_spec
+        """
+        """
+        return self.child.get_size()
+
+    def resize(self, size_x, size_y):
+        """
+        """
+        self.child.resize(size_x, size_y)
+
+    def mark_dirty(self):
+        """
+        This implementation just reports dirtying upwards.
+        """
+        self.parent.mark_dirty()
 
 
-class WholeScreen(BaseFrame):
-    def __init__(self, child, name="whole screen", auto_resize=True):
-        self.child = child
-        self.np = base.a2dTopLeft.attach_new_node(name)
-        self.auto_resize = auto_resize
+class RootFrame(BaseFrame):
+    """
+    This class represents the root of a tree of frames. It offers 
+    several ways to automate resizing the window tree.
+
+    Initializing may only prepare frames for actual setup; It may
+    not create graphical elements yet. This is so that sub-trees can
+    be set up separately (and stored in variables for later 
+    manipulation), and only assembled into the full tree later. As
+    in these sub-trees their parents are not yet known, it is 
+    impossible to determine where to place them.
+
+    To actually create the GUI elements, `create()` has to be 
+    called. 
+    """
+    def __init__(self, child, name="whole screen",
+                 on_event=True, on_dirty=True, task_args=None,
+                 delay_create=False):
+        """
+        :child:        The tree in this frame.
+        :name:         The name of the GUI's `NodePath`.
+        :on_event:     An `aspectRatioChanged` event will trigger a
+                       resize. True by default.
+        :on_dirty:     The child can report that a change has occurred
+                       within it that necessitates a resize. If
+                       :on_dirty: is `True` (default), that resize will
+                       be done immediately.
+        :task_args:    To create a task that triggers a resize every 
+                       frame, pass an `(args, kwargs)` tuple with
+                       arguments to pass to `base.task_mgr.add`. By
+                       default, no such task is created.
+        """
+        BaseFrame.__init__(self, child)
+
+        self.name = name
+        self.on_event = on_event
+        self.on_dirty = on_dirty
+        if task_args is None:
+            self.by_task = False
+        else:
+            self.by_task = True
+            self.task_args = task_args
+
+        self.dirty = True
+        if not delay_create:
+            self.create()
 
     def create(self):
-        self.child.create(self.np)
-        if self.auto_resize:
-            base.accept('aspectRatioChanged', self.resize)
+        """
+        Create the widget, call `create` on the child (recursively
+        triggering the creation of all widgets), and perform the initial
+        resize. Also perform all the administrative work necessitated by
+        the parameters to `__init__`.
+        """
+        self.np = base.a2dTopLeft.attach_new_node(self.name)
+        self.child.create(self, self.np)
         self.resize()
 
+        if self.on_event:
+            base.accept('aspectRatioChanged', self.resize)
+        if self.by_task:
+            args, kwargs = self.task_args
+            base.task_mgr.add(*args, **kwargs)
+
     def destroy(self):
+        """
+        """
         self.child.destroy()
-        self.child = None
         self.np.destroy()
         self.np = None
+
+        if self.on_event:
+            # FIXME: Unregister event listener
+            pass
+        if self.by_task:
+            # FIXME: Remove task
+            pass
+
+    def get_size(self):
+        return self.child.get_size()
 
     def resize(self):
         size = base.a2dTopRight.get_pos() - base.a2dBottomLeft.get_pos()
@@ -61,23 +153,30 @@ class WholeScreen(BaseFrame):
 
         self.child.resize(width, height)
 
-    def get_size(self):
-        return self.child.get_size()
+    def mark_dirty(self):
+        self.dirty = True
+        if self.on_dirty:
+            self.resize()
 
 
-class MultiFrame:
+class WholeScreen(RootFrame):
+    pass
+
+
+class MultiFrame(BaseFrame):
     def __init__(self, *children, weight=1.0):
         self.children = list(children)
         self.weight = weight
 
-    def create(self, parent):
+    def create(self, parent, parent_np):
         self.parent = parent
+        self.parent_np = parent_np
         self.nps = [
-            parent.attach_new_node(repr(self))
+            parent_np.attach_new_node(repr(self))
             for c in self.children
         ]
         for child, np in zip(self.children, self.nps):
-            child.create(np)
+            child.create(self, np)
 
     def destroy(self):
         for child in self.children:
@@ -91,9 +190,9 @@ class MultiFrame:
     def add(self, idx, child):
         assert 0 <= idx <= len(self.children)
         self.children.insert(idx, child)
-        np = self.parent.attach_new_node(repr(self))
+        np = self.parent_np.attach_new_node(repr(self))
         self.nps.insert(idx, np)
-        child.create(np)
+        child.create(self, np)
 
     def remove(self, idx):
         assert 0 <= idx <= len(self.children) - 1
@@ -169,7 +268,16 @@ class Empty(BaseFrame):
             size_spec = SizeSpec()
         self.size_spec = size_spec
 
-    def create(self, parent):
+    def create(self, parent, parent_np):
+        pass
+
+    def destroy(self):
+        pass
+
+    def get_size(self):
+        return self.size_spec
+
+    def resize(sef, size_, size_y):
         pass
 
 
@@ -184,14 +292,17 @@ class Element(BaseFrame):
         if 'text_align' not in self.kwargs:
             self.kwargs['text_align'] = TextNode.ALeft
 
-    def create(self, parent):
+    def create(self, parent, parent_np):
         self.np = self.element_cls(
-            parent=parent,
+            parent=parent_np,
             **self.kwargs,
         )
 
     def destroy(self):
         self.np.destroy()
+
+    def get_size(self):
+        return self.size_spec
 
     def resize(self, width, height):
         self.np.set_pos(width / 2.0, 0, -height / 2.0)
@@ -212,12 +323,12 @@ class ScrollableFrame(BaseFrame):
             size_spec = SizeSpec()
         self.size_spec = size_spec
 
-    def create(self, parent):
+    def create(self, parent, parent_np):
         self.np = DirectScrolledFrame(
-            parent=parent,
+            parent=parent_np,
             frameColor=(1,0,0,1),
         )
-        self.child.create(self.np.getCanvas())
+        self.child.create(self, self.np.getCanvas())
 
     def destroy(self):
         self.np.destroy()

@@ -164,6 +164,8 @@ class WholeScreen(RootFrame):
 
 
 class MultiFrame(BaseFrame):
+    # get_size / rezise are implemented in inheriting frames.
+    # mark-dirty uuses the BaseFrame implementation.
     def __init__(self, *children, weight=1.0):
         self.children = list(children)
         self.weight = weight
@@ -263,6 +265,7 @@ class VerticalFrame(MultiFrame):
 
 
 class Empty(BaseFrame):
+    # mark_dirty uses the BaseFrame implementation.
     def __init__(self, size_spec=None):
         if size_spec is None:
             size_spec = SizeSpec()
@@ -282,17 +285,20 @@ class Empty(BaseFrame):
 
 
 class Element(BaseFrame):
+    # mark_dirty uses the BaseFrame implementation.
     def __init__(self, element_cls, kwargs=None, size_spec=None):
         self.element_cls = element_cls
         self.kwargs = kwargs
         if size_spec is None:
             size_spec = SizeSpec()
         self.size_spec = size_spec
-        # FIXME: The text_pos has to be set to align the text with the label's boundaries. This solution is brittle AF.
+        # FIXME: The text_pos has to be set to align the text with the
+        # label's boundaries. This solution is brittle AF.
         if 'text_align' not in self.kwargs:
             self.kwargs['text_align'] = TextNode.ALeft
 
     def create(self, parent, parent_np):
+        self.parent = parent
         self.np = self.element_cls(
             parent=parent_np,
             **self.kwargs,
@@ -317,6 +323,7 @@ class Element(BaseFrame):
 
 
 class ScrollableFrame(BaseFrame):
+    # mark_dirty uses the BaseFrame implementation.
     def __init__(self, child, size_spec=None):
         self.child = child
         if size_spec is None:
@@ -324,6 +331,7 @@ class ScrollableFrame(BaseFrame):
         self.size_spec = size_spec
 
     def create(self, parent, parent_np):
+        self.parent = parent
         self.np = DirectScrolledFrame(
             parent=parent_np,
             frameColor=(1,0,0,1),

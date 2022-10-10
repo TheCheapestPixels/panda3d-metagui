@@ -44,8 +44,6 @@ if __name__ == '__main__':
                 kwargs=dict(
                     text="Foo",
                     text_pos=(0, -0.02),
-                    #text_align=TextNode.ALeft,
-                    #text_align=TextNode.ARight,
                     text_align=TextNode.ACenter,
                     text_scale=0.07,
                     frameColor=(1,0,0,1),

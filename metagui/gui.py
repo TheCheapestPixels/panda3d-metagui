@@ -7,59 +7,99 @@ from direct.gui.DirectGui import DirectScrolledFrame
 
 class SizeSpec:
     def __init__(self,
-                 w_min=0.0, h_min=0.0,
-                 w_weight=1.0, h_weight=1.0,
+                 w_min=0.0, w_weight=1.0,
+                 h_min=0.0, h_weight=1.0,
                  ):
         self.w_min = w_min
-        self.h_min = h_min
         self.w_weight = w_weight
+        self.h_min = h_min
         self.h_weight = h_weight
+
+
+class SimplexFrame:
+    def __init__(self, child):
+        self.child = child
+
+    def create(self, parent, parent_np):
+        self.parent = parent
+        self.np = parent_np
+        self.child.create(self, self.np)
+
+    def destroy(self):
+        self.child.destroy()
+        self.np.destroy_node()
+        self.np = None
+
+    def get_size(self):
+        return self.child.get_size()
+
+    def resize(self, size_x, size_y):
+        self.child.resize(size_x, size_y)
+
+
+class MultiFrame(SimplexFrame):
+    def __init__(self, *children, weight=1.0):
+        self.children = list(children)
+        self.weight = weight
+
+    def create(self, parent, parent_np):
+        self.parent = parent
+        self.parent_np = parent_np
+        self.nps = [
+            parent_np.attach_new_node(repr(self))
+            for c in self.children
+        ]
+        for child, np in zip(self.children, self.nps):
+            child.create(self, np)
+
+    def destroy(self):
+        for child in self.children:
+            child.destroy()
+        self.children = []
+
+        for np in self.nps:
+            np.destroy_node()
+        self.nps = []
+
+    def get_size(self):
+        raise NotImplemented
+
+    def resize(self, size_x, size_y):
+        raise NotImplemented
+
+    def add(self, idx, child):
+        assert 0 <= idx <= len(self.children)
+        self.children.insert(idx, child)
+        np = self.parent_np.attach_new_node(repr(self))
+        self.nps.insert(idx, np)
+        child.create(self, np)
+        self.mark_dirty()
+
+    def remove(self, idx):
+        assert 0 <= idx <= len(self.children) - 1
+        child = self.children.pop(idx)
+        child.destroy()
+        np = self.nps.pop(idx)
+        np.remove_node()
+        self.mark_dirty()
+
+
+class PushUpDirty:
+    def mark_dirty(self):
+        self.parent.mark_dirty()
+
+
+class RedrawOnDirty:
+    def mark_dirty(self):
+        self.resize()
 
 
 """
 123456789012345678901234567890123456789012345678901234567890123456789012
 """
-class BaseFrame:
-    def __init__(self, child):
-        """
-        """
-        self.child = child
-
-    def create(self, parent, parent_np):
-        """
-        Create the widet, attach it to the scene graph, and trigger the
-        child(ren) to do the same. In this phase a `self.np` has to be
-        assigned.
-        """
-        self.parent = parent
-        self.np = parent_np
-        self.child.create(self, self.parent_np)
-
-    def destroy(self):
-        """
-        Undo `create()`.
-        """
-        self.child.destroy()
-        self.np = None
-
-    def get_size(self):
-        """
-        """
-        return self.child.get_size()
-
-    def resize(self, size_x, size_y):
-        """
-        """
-        self.child.resize(size_x, size_y)
-
-    def mark_dirty(self):
-        """
-        This implementation just reports dirtying upwards.
-        """
-        self.parent.mark_dirty()
 
 
-class RootFrame(BaseFrame):
+class WholeScreen(SimplexFrame, RedrawOnDirty):
     """
     This class represents the root of a tree of frames. It offers 
     several ways to automate resizing the window tree.
@@ -91,7 +131,7 @@ class RootFrame(BaseFrame):
                        arguments to pass to `base.task_mgr.add`. By
                        default, no such task is created.
         """
-        BaseFrame.__init__(self, child)
+        SimplexFrame.__init__(self, child)
 
         self.name = name
         self.on_event = on_event
@@ -138,7 +178,7 @@ class RootFrame(BaseFrame):
             pass
 
     def get_size(self):
-        return self.child.get_size()
+        SimplexFrame.get_size(self)
 
     def resize(self):
         size = base.a2dTopRight.get_pos() - base.a2dBottomLeft.get_pos()
@@ -151,60 +191,16 @@ class RootFrame(BaseFrame):
         if min_size.h_min > height or min_size.h_weight == 0.0:
             height = min_size.h_min
 
-        self.child.resize(width, height)
+        SimplexFrame.resize(self, width, height)
+        self.dirty = False
 
     def mark_dirty(self):
         self.dirty = True
         if self.on_dirty:
-            self.resize()
+            RedrawOnDirty.mark_dirty(self)
 
 
-class WholeScreen(RootFrame):
-    pass
-
-
-class MultiFrame(BaseFrame):
-    # get_size / rezise are implemented in inheriting frames.
-    # mark-dirty uuses the BaseFrame implementation.
-    def __init__(self, *children, weight=1.0):
-        self.children = list(children)
-        self.weight = weight
-
-    def create(self, parent, parent_np):
-        self.parent = parent
-        self.parent_np = parent_np
-        self.nps = [
-            parent_np.attach_new_node(repr(self))
-            for c in self.children
-        ]
-        for child, np in zip(self.children, self.nps):
-            child.create(self, np)
-
-    def destroy(self):
-        for child in self.children:
-            child.destroy()
-        self.children = []
-
-        for np in self.nps:
-            np.remove_node()
-        self.nps = []
-
-    def add(self, idx, child):
-        assert 0 <= idx <= len(self.children)
-        self.children.insert(idx, child)
-        np = self.parent_np.attach_new_node(repr(self))
-        self.nps.insert(idx, np)
-        child.create(self, np)
-
-    def remove(self, idx):
-        assert 0 <= idx <= len(self.children) - 1
-        child = self.children.pop(idx)
-        child.destroy()
-        np = self.nps.pop(idx)
-        np.remove_node()
-
-
-class HorizontalFrame(MultiFrame):
+class HorizontalFrame(MultiFrame, PushUpDirty):
     def get_size(self):
         child_sizes = [c.get_size() for c in self.children]
         w_min = sum(c.w_min for c in child_sizes)
@@ -234,7 +230,7 @@ class HorizontalFrame(MultiFrame):
             left += c_width
             
 
-class VerticalFrame(MultiFrame):
+class VerticalFrame(MultiFrame, PushUpDirty):
     def get_size(self):
         child_sizes = [c.get_size() for c in self.children]
         w_min = max(c.w_min for c in child_sizes)
@@ -264,8 +260,7 @@ class VerticalFrame(MultiFrame):
             top -= c_height
 
 
-class Empty(BaseFrame):
-    # mark_dirty uses the BaseFrame implementation.
+class Empty(SimplexFrame):
     def __init__(self, size_spec=None):
         if size_spec is None:
             size_spec = SizeSpec()
@@ -284,8 +279,7 @@ class Empty(BaseFrame):
         pass
 
 
-class Element(BaseFrame):
-    # mark_dirty uses the BaseFrame implementation.
+class Element(SimplexFrame):
     def __init__(self, element_cls, kwargs=None, size_spec=None):
         self.element_cls = element_cls
         self.kwargs = kwargs
@@ -306,6 +300,7 @@ class Element(BaseFrame):
 
     def destroy(self):
         self.np.destroy()
+        self.np = None
 
     def get_size(self):
         return self.size_spec
@@ -322,8 +317,7 @@ class Element(BaseFrame):
                 self.np['text_pos'] = (0, self.np['text_pos'][1])
 
 
-class ScrollableFrame(BaseFrame):
-    # mark_dirty uses the BaseFrame implementation.
+class ScrollableFrame(SimplexFrame):
     def __init__(self, child, size_spec=None):
         self.child = child
         if size_spec is None:
@@ -340,6 +334,9 @@ class ScrollableFrame(BaseFrame):
 
     def destroy(self):
         self.np.destroy()
+
+    def get_size(self):
+        return self.size_spec
 
     def resize(self, width, height):
         self.np['frameSize'] = (0, width, -height, 0)

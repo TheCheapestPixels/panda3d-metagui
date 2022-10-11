@@ -282,6 +282,8 @@ class Empty(SimplexFrame):
 class Element(SimplexFrame):
     def __init__(self, element_cls, kwargs=None, size_spec=None):
         self.element_cls = element_cls
+        if kwargs is None:
+            kwargs = dict()
         self.kwargs = kwargs
         if size_spec is None:
             size_spec = SizeSpec()

@@ -261,7 +261,7 @@ if __name__ == '__main__':
                 #        dict(text="DirectRadioButton 1", indicatorValue=False),
                 #    ],
                 #    kwargs_all=dict(
-                #        scale=0.95,
+                 #        scale=0.95,
                 #        #boxBorder=0.03,
                 #        **text_standard_centered,
                 #        #**relief_thin,

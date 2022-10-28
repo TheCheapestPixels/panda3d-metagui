@@ -197,6 +197,7 @@ if __name__ == '__main__':
 
     # Text attributes
     small_text = dict(text_scale=0.07)
+
     text_standard_centered = dict(
         text_pos=(0, -0.02),
         text_align=TextNode.ACenter,
@@ -218,13 +219,17 @@ if __name__ == '__main__':
         relief=RAISED,
         borderWidth=(0.03, 0.03),
     )
+    relief_thick = dict(
+        relief=RAISED,
+        borderWidth=(0.25, 0.25),
+    )
 
     # The actual GUI
     progress_bar = WrappedProgressBar(
         kwargs=dict(
             barColor=(0, 0, 0.75, 1),
             barRelief=RAISED,
-            barBorderWidth=(0.03, 0.03),
+            barBorderWidth=(0.01, 0.01),
             **relief_thin,
             **small_text,
         ),
@@ -244,40 +249,40 @@ if __name__ == '__main__':
                         **relief_thin,
                     ),
                 ),
-                #WrappedCheckButton(
-                #    kwargs=dict(
-                #        text='DirectCheckButton',
-                #        **text_standard_centered,
-                #        **relief_thin,
-                #    ),
-                #),
+                WrappedEntry(
+                    kwargs=dict(
+                        #**relief_thin,
+                        relief=RIDGE,
+                        borderWidth=(0.03, 0.03),
+                        **small_text,
+                    ),
+                ),
+                progress_bar,
+                WrappedSlider(kwargs=relief_thin),
+                Empty(),
+                WrappedCheckButton(
+                    kwargs=dict(
+                        text='DirectCheckButton',
+                        **text_standard_centered,
+                        **relief_thin,
+                    ),
+                ),
                 #RadioButtonFrame(
                 #    VerticalFrame,
                 #    values=[[0], [1]],
-                #    spacer_factory=spacer_factory(dict(h_min=0.1, h_weight=0.0), style=color_blue),
+                #    #spacer_factory=spacer_factory(dict(h_min=0.1, h_weight=0.0), style=color_blue),
                 #    initial_value=[1],
                 #    kwargs_each=[
                 #        dict(text="DirectRadioButton 0", indicatorValue=False),
                 #        dict(text="DirectRadioButton 1", indicatorValue=False),
                 #    ],
                 #    kwargs_all=dict(
-                 #        scale=0.95,
+                #        #scale=0.95,
                 #        #boxBorder=0.03,
                 #        **text_standard_centered,
-                #        #**relief_thin,
+                #        **relief_thin,
                 #    ),
                 #),
-                WrappedEntry(
-                    kwargs=dict(
-                        **small_text,
-                        #**relief_thin,
-                        relief=RIDGE,
-                        borderWidth=(0.03, 0.03),
-                    ),
-                ),
-                progress_bar,
-                WrappedSlider(kwargs=relief_thin),
-                #Empty(),
             ),
         ),
     )
